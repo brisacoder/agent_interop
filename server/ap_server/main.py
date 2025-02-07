@@ -2,7 +2,9 @@
 #   filename:  openapi.json
 from __future__ import annotations
 
+import os
 import logging
+from fastapi.responses import FileResponse
 import uvicorn
 
 from fastapi import FastAPI
@@ -44,7 +46,12 @@ def add_handlers(app: FastAPI):
     @app.get("/")
     async def root():
         return {"message": "Gateway of the App"}    
-
+    
+    @app.get('/favicon.ico', include_in_schema=False)
+    async def favicon():
+        file_name = "favicon.ico"
+        file_path = os.path.join(app.root_path, "", file_name)
+        return FileResponse(path=file_path, headers={"Content-Disposition": "attachment; filename=" + file_name})
 
 if __name__ == "__main__":
     app = create_app()

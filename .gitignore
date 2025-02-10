@@ -171,3 +171,8 @@ cython_debug/
 .pypirc
 
 .idea/
+
+.DS_Store
+venv/
+*.env
+/env/

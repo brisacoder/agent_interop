@@ -1,6 +1,11 @@
 langgraph==2.7.0
 langgraph-sdk==0.28.1
 fastapi[standard]==0.115.8
+openai==1.59.5
 autogen-agentchat==0.4.5
-autogen-ext[openai]==0.4.5
-autogenstudio==0.4.0.9
+autogen-core==0.4.5
+autogen-ext==0.4.5
+azure-core==1.32.0
+azure-identity==1.19.0
+azure-storage-blob==12.24.0
+tiktoken==0.8.0

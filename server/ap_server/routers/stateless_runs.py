@@ -9,6 +9,8 @@ import logging
 from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 
+from autogen_agent_util.non_streaming_util import autogen_agent
+from autogen_agent_util.streaming_util import autogen_agent_streaming
 from models import Any, ErrorResponse, RunCreateStateless, Union
 from langchain_core.messages import AIMessage
 
@@ -25,11 +27,16 @@ router = APIRouter(tags=["Stateless Runs"])
     },
     tags=["Stateless Runs"],
 )
-def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
-    """
-    Create Background Run
-    """
-    pass
+# async function because autogen_agent_util is async
+async def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+    # get user input
+    # run autogen agent and get output
+    query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
+    print(f"Received query: {query_input}")
+    output_data = await autogen_agent(query_input)
+    print(f"Output: {output_data}")
+
+    return {"query": query_input, "output": output_data}
 
 
 @router.post(
@@ -43,7 +50,7 @@ def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorRespons
     tags=["Stateless Runs"],
 )
 def stream_run_stateless_runs_stream_post(
-    body: RunCreateStateless,
+        body: RunCreateStateless,
 ) -> Union[str, ErrorResponse]:
     """
     Create Run, Stream Output
@@ -111,7 +118,7 @@ def stream_run_stateless_runs_stream_post(
                 # The event name here, "updates" MUST match the stream_mode on the client
                 yield f"event: updates\ndata: {json.dumps(event_data)}\n\n"
                 # If more events are needed, add additional yields here.
-            
+
             # Return a StreamingResponse with the SSE generator and the proper content type.
             return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -144,6 +151,25 @@ def stream_run_stateless_runs_stream_post(
         )
 
 @router.post(
+    "/runs/stream/agent",
+    response_model=str,
+    responses={
+        "404": {"model": ErrorResponse},
+        "409": {"model": ErrorResponse},
+        "422": {"model": ErrorResponse},
+    },
+    tags=["Stateless Runs"],
+)
+def stream_run_stateless_runs_stream_post(
+        body: RunCreateStateless,
+) -> Union[str, ErrorResponse]:
+    query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
+    print(f"Received query: {query_input}")
+    stream_response = StreamingResponse(autogen_agent_streaming(query_input), media_type="text/event-stream")
+
+    return stream_response
+
+@router.post(
     "/runs/wait",
     response_model=Any,
     responses={
@@ -154,7 +180,7 @@ def stream_run_stateless_runs_stream_post(
     tags=["Stateless Runs"],
 )
 def wait_run_stateless_runs_wait_post(
-    body: RunCreateStateless,
+        body: RunCreateStateless,
 ) -> Union[Any, ErrorResponse]:
     """
     Create Run, Wait for Output

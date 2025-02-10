@@ -22,7 +22,13 @@ graph = builder.compile()
 # print(result)
 
 # stream outputs from both the parent graph and subgraph
+# for chunk in graph.stream({
+#     "messages": [{"role": "user", "content": "what's the weather in sf"}]
+# }, stream_mode="values", subgraphs=True):
+#     print(chunk)
+
+# The stream_mpde below MUST match the event name that comes back from the server
 for chunk in graph.stream({
     "messages": [{"role": "user", "content": "what's the weather in sf"}]
-}, debug=True, subgraphs=True):
+}, stream_mode="updates", subgraphs=True):
     print(chunk)

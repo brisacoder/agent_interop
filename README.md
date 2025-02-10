@@ -11,6 +11,8 @@ The call to `RemoteGraph()` on the client side ends upsending a request to `/run
 
 `client\lg.py` has a client that consist of a Graph + a RemoteGraph that hits the above mentioned server.
 
+ `client\rest.py` contains a client that makes a stateless request the above mentioned server via Agent Protocol /runs endpoint.
+
 ## Testing
 
 * Run Server as `python main.py`

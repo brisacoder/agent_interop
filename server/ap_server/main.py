@@ -15,6 +15,7 @@ from routers import runs, stateless_runs, store, threads
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+
 def create_app():
     app = FastAPI(title="Agentic DB API", description="API for managing Agentic DB",
                   version="0.1.0")
@@ -42,16 +43,18 @@ def create_app():
 
     return app
 
+
 def add_handlers(app: FastAPI):
     @app.get("/")
     async def root():
-        return {"message": "Gateway of the App"}    
-    
+        return {"message": "Gateway of the App"}
+
     @app.get('/favicon.ico', include_in_schema=False)
     async def favicon():
         file_name = "favicon.ico"
         file_path = os.path.join(app.root_path, "", file_name)
         return FileResponse(path=file_path, headers={"Content-Disposition": "attachment; filename=" + file_name})
+
 
 if __name__ == "__main__":
     app = create_app()

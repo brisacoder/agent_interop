@@ -59,5 +59,5 @@ def add_handlers(app: FastAPI):
 if __name__ == "__main__":
     app = create_app()
     logging.info("Starting Agentic DB API...")
-    uvicorn.run(app, host="0.0.0.0", port=8123)
+    uvicorn.run(app, host="0.0.0.0", port=8123, log_level="info")
     logging.info("Application shutdown")

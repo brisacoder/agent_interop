@@ -73,6 +73,9 @@ def stream_run_stateless_runs_stream_post(
         payload = body.model_dump()
         logging.debug("Decoded payload: %s", payload)
 
+        # Extract assistant_id from the payload
+        assistant_id = payload.get("assistant_id")
+
         # Validate that the assistant_id is not empty.
         if not payload.get("assistant_id"):
             msg = "assistant_id is required and cannot be empty."
@@ -126,7 +129,10 @@ def stream_run_stateless_runs_stream_post(
                 """
                 # Create a dictionary with the response information.
                 
-                output_data = await run_autogen(human_input_content)
+                if assistant_id == "autogen":
+                    output_data = await run_autogen(human_input_content)
+                else:
+                    raise ValueError("Unrecognized Agent")
 
                 event_data = {
                     "messages": [AIMessage(output_data).model_dump()],

@@ -70,9 +70,10 @@ output:
 
 `client\lg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
 
- `client\rest.py` contains a client that makes a stateless request to the above mentioned server via Agent Protocol /runs endpoint.
+`client\rest.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint.
 
 ## Testing
 
 * Run Server as `python main.py`
-* Run client as `python lg.main`
+* Run RemoteGraph client as `python lg.py`
+* Run stateless REST client as `python rest.py`

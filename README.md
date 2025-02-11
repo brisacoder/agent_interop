@@ -1,10 +1,18 @@
-# agent_interop
+# Agentic Framework Interoperability Over the Network
 
-This repository demonstrates the integration of Langgraph and Autogen agents over the network.
+This repository demonstrates how to orchestrate interactions between **Langgraph** and **Autogen** agents **over a network**, rather than in a single codebase. By separating the server-side Autogen agent (for generating short stories) and the client-side Langgraph agent, you gain a clear, modular architecture that showcases how distributed AI agents can interoperate via REST APIs.
+
+With this example, you can:
+
+- **Isolate Agent Logic** – Keep the story-generation functionality on the server, while the client remains focused on orchestration.  
+- **Leverage REST Endpoints** – Interact with the Autogen agent through streaming or stateless endpoints, providing flexible integration strategies for your own applications.  
+- **Streamline Development** – Easily experiment and debug each component, reducing complexity by splitting responsibilities across separate processes.  
+
+---
 
 ## Server-Side
 
-Server has an autogen agent(v0.4) to create short stories. 
+Server has an autogen agent(v0.4) to create short stories.
 
 Prereq:<br/>
 export azure openai env vars for using autogen agent-

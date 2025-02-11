@@ -29,10 +29,19 @@ router = APIRouter(tags=["Stateless Runs"])
 )
 # async function because autogen_agent_util is async
 async def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
-    # get user input
-    # run autogen agent and get output
+    """
+    Asynchronously processes a stateless run request and returns the result.
+
+    Args:
+        body (RunCreateStateless): The request body containing the run details.
+
+    Returns:
+        Union[Any, ErrorResponse]: The result of the run or an error response.
+    """
+    # Extract the query input from the request body.
     query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
     print(f"Received query: {query_input}")
+    # Run the autogen agent with the extracted query input and await the output.
     output_data = await autogen_agent(query_input)
     print(f"Output: {output_data}")
 
@@ -160,11 +169,25 @@ def stream_run_stateless_runs_stream_post(
     },
     tags=["Stateless Runs"],
 )
-def stream_run_stateless_runs_stream_post(
+def stream_run_stateless_runs_stream_post_agent(
         body: RunCreateStateless,
 ) -> Union[str, ErrorResponse]:
+    """
+        Create Run, Stream Output using Agent
+
+        This endpoint accepts a JSON payload describing a run to be executed in stream mode using an agent.
+        The payload is automatically parsed into a `RunCreateStateless` object.
+
+        Args:
+            body (RunCreateStateless): The request body containing the run details.
+
+        Returns:
+            Union[str, ErrorResponse]: The streaming response or an error response.
+        """
+    # Extract the query input from the request body.
     query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
     print(f"Received query: {query_input}")
+    # Create a StreamingResponse with the autogen_agent_streaming generator and the proper content type.
     stream_response = StreamingResponse(autogen_agent_streaming(query_input), media_type="text/event-stream")
 
     return stream_response

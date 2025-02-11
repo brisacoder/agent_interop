@@ -110,17 +110,26 @@ def stream_run_stateless_runs_stream_post(
             if human_input_content is None:
                 raise ValueError("Missing 'content' in the first message of 'input.messages'.")
 
+            # Small helper function
+            async def run_autogen(human_input: str) -> str:
+                # Run the autogen agent with the extracted query input and await the output.
+                output_data = await autogen_agent(human_input)
+                return output_data
+
             # -----------------------------------------------
             # Define a generator function for SSE streaming.
             # -----------------------------------------------
-            def event_generator():
+            async def event_generator():
                 """
                 Generator function to yield SSE events with JSON-formatted data.
                 The event data is serialized as JSON and prefixed with 'data:'.
                 """
                 # Create a dictionary with the response information.
+                
+                output_data = await run_autogen(human_input_content)
+
                 event_data = {
-                    "messages": [AIMessage("Run processing started successfully").model_dump()],
+                    "messages": [AIMessage(output_data).model_dump()],
                 }
                 # Serialize the dictionary as JSON and yield as an SSE event.
                 

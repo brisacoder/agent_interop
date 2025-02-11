@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 from typing import TypedDict
 
 url = "http://127.0.0.1:8123"
-graph_name = "agent"
+graph_name = "autogen"
 remote_graph = RemoteGraph(graph_name, url=url)
 
 # define parent graph

@@ -1,13 +1,13 @@
 # agent_interop
 
-
 ## Server-Side
 
 Server has an autogen agent(v0.4) to create short stories. 
 
 Prereq:<br/>
 export azure openai env vars for using autogen agent-
-```
+
+```bash
 AZURE_OPENAI_API_KEY="<your-key>"
 AZURE_OPENAI_ENDPOINT="<your-endpoint>"
 AZURE_OPENAI_DEPLOYMENT="gpt-4o"
@@ -21,7 +21,7 @@ The call to `RemoteGraph()` on the client side sends a request to `/runs/stream`
 
 `/runs` endpoint calls the autogen agent without streaming
 
-```
+```bash
 curl --location 'http://0.0.0.0:8123/runs' \
 --header 'accept: application/json' \
 --header 'Content-Type: application/json' \
@@ -39,10 +39,9 @@ output:
 
 ```
 
-
-
 `/runs/stream/agent` calls the autogen agent with streaming
-```
+
+```bash
 curl --location 'http://0.0.0.0:8123/runs/stream/agent' \
 --header 'accept: application/json' \
 --header 'Content-Type: application/json' \
@@ -56,7 +55,6 @@ output:
 <Streamed output from agent>
 
 ```
-
 
 ## Client-Side
 

@@ -1,5 +1,7 @@
 # agent_interop
 
+This repository demonstrates the integration of Langgraph and Autogen agents over the network.
+
 ## Server-Side
 
 Server has an autogen agent(v0.4) to create short stories. 

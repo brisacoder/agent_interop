@@ -1,7 +1,7 @@
 from autogen_agentchat.messages import TextMessage
 from fastapi import HTTPException
 
-from autogen_agent_util.assistant_agent import AGENT_ASSISTANT, CANCELLATION_TOKEN
+from autogen_agent_util.assistant_agent import get_assistant_agent
 
 
 async def autogen_agent(input_query: str):
@@ -19,8 +19,9 @@ async def autogen_agent(input_query: str):
     """
     try:
         # Send the input query to the AssistantAgent and await the response.
-        response = await AGENT_ASSISTANT.on_messages([TextMessage(content=input_query, source="user")],
-                                                     CANCELLATION_TOKEN)
+        assistant_agent, cancellation_token = get_assistant_agent()
+        response = await assistant_agent.on_messages([TextMessage(content=input_query, source="user")],
+                                                     cancellation_token)
     except Exception as e:
         # Raise an HTTPException with status code 500 if an error occurs.
         raise HTTPException(status_code=500, detail=f"Error in autogen_agent: {str(e)}")

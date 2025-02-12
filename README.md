@@ -51,6 +51,7 @@ output:
 
 `/runs/stream` endpoint is used by remotegraph client
 ```bash
+for autogen subgraph:
 curl --location 'http://localhost:8123/runs/stream' \
 --header 'Content-Type: application/json' \
 --data '{
@@ -62,6 +63,23 @@ curl --location 'http://localhost:8123/runs/stream' \
              ]
            },
            "assistant_id": "autogen",
+           "config": {
+             "tags": ["tag1", "tag2"]
+           }
+         }'
+
+for llama_index subgraph:
+curl --location 'http://localhost:8123/runs/stream' \
+--header 'Content-Type: application/json' \
+--data '{
+           "input": {
+             "messages": [
+               {
+                 "content": "write a story about cat"
+               }
+             ]
+           },
+           "assistant_id": "llama_index",
            "config": {
              "tags": ["tag1", "tag2"]
            }

@@ -109,8 +109,11 @@ output:
 
 `client\rest.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint.
 
+`client\rest_autogen_human_in_loop.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint and then sends the output to a human in loop.
+
 ## Testing
 
 * Run Server as `python main.py`
 * Run RemoteGraph client as `python lg.py`
 * Run stateless REST client as `python rest.py`
+* Run stateless REST client for human-in-loop `python rest_autogen_human_in_loop.py`

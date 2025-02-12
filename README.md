@@ -49,7 +49,7 @@ output:
 
 ```
 
-`runs/stream` endpoint is used by remotegraph client
+`/runs/stream` endpoint is used by remotegraph client
 ```bash
 curl --location 'http://localhost:8123/runs/stream' \
 --header 'Content-Type: application/json' \

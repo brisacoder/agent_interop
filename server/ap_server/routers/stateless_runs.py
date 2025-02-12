@@ -13,6 +13,7 @@ from autogen_agent_util.non_streaming_util import autogen_agent
 from autogen_agent_util.streaming_util import autogen_agent_streaming
 from models import Any, ErrorResponse, RunCreateStateless, Union
 from langchain_core.messages import AIMessage
+from llamindex_agent_util.llamaindex_agent import llama_index_agent
 
 router = APIRouter(tags=["Stateless Runs"])
 
@@ -131,6 +132,8 @@ def stream_run_stateless_runs_stream_post(
                 
                 if assistant_id == "autogen":
                     output_data = await run_autogen(human_input_content)
+                elif assistant_id == "llama_index":
+                    output_data = llama_index_agent(human_input_content)
                 else:
                     raise ValueError("Unrecognized Agent")
 

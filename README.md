@@ -49,6 +49,25 @@ output:
 
 ```
 
+`runs/stream` endpoint is used by remotegraph client
+```bash
+curl --location 'http://localhost:8123/runs/stream' \
+--header 'Content-Type: application/json' \
+--data '{
+           "input": {
+             "messages": [
+               {
+                 "content": "write a story about cat"
+               }
+             ]
+           },
+           "assistant_id": "autogen",
+           "config": {
+             "tags": ["tag1", "tag2"]
+           }
+         }'
+```
+
 `/runs/stream/agent` calls the autogen agent with streaming
 
 ```bash

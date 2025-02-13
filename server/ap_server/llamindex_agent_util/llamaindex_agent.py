@@ -35,7 +35,7 @@ def llama_index_agent(input_query: str):
         # Initialize the ReActAgent with the model client and process the input query.
         agent = ReActAgent.from_tools([], llm=get_model_client())
         logging.info(f"llama index Agent initialized")
-        response = agent.chat(input_query)
+        response = agent.chat(input_query + "Do no use ReActAgent tools to answer the question, just use the information provided in the input query for LLM")
     except Exception as e:
         # Raise an Exception if an error occurs.
         raise Exception(f"Error in llama_index_agent: {str(e)}")
@@ -44,6 +44,7 @@ def llama_index_agent(input_query: str):
     common_response = {"type": agent.chat_history[-1].blocks[0].block_type, "content": response.response, "role": agent.chat_history[-1].role.value, 
                        "prompt_tokens": token_counter.prompt_llm_token_count,
                        "completion_tokens": token_counter.completion_llm_token_count}
+    logging.info(f"prompt_tokens: {token_counter.prompt_llm_token_count}, completion_tokens: {token_counter.completion_llm_token_count}")
     # Reset token counter
     token_counter.reset_counts()
     return common_response

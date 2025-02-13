@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 
 from autogen_agent_util.non_streaming_util import autogen_agent
+from autogen_agent_util.human_in_loop import autogen_agent_human_in_loop
 from autogen_agent_util.streaming_util import autogen_agent_streaming
 from models import Any, ErrorResponse, RunCreateStateless, Union
 from langchain_core.messages import AIMessage
@@ -120,6 +121,11 @@ def stream_run_stateless_runs_stream_post(
                 output_data = await autogen_agent(human_input)
                 return output_data
 
+            async def run_autogen_human_in_loop(human_input: str) -> str:
+                # Run the autogen agent with the extracted query input and human_in_loop.
+                output_data = await autogen_agent_human_in_loop(human_input)
+                return output_data
+
             # -----------------------------------------------
             # Define a generator function for SSE streaming.
             # -----------------------------------------------
@@ -132,6 +138,9 @@ def stream_run_stateless_runs_stream_post(
                 
                 if assistant_id == "autogen":
                     common_response = await run_autogen(human_input_content)
+                    output_data = common_response["content"]
+                elif assistant_id == "autogen_human_in_loop":
+                    common_response = await run_autogen_human_in_loop(human_input_content)
                     output_data = common_response["content"]
                 elif assistant_id == "llama_index":
                     common_response = llama_index_agent(human_input_content)

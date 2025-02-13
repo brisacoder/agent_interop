@@ -1,6 +1,6 @@
 # Description: This file contains a demonstration of human-in-the-loop in langgraph,
 # using a sample graph that makes a stateless request to the autogen server.
-# python3 client/rest_autogen_human_in_loop.py
+# python3 client/rest_human_in_loop_lg.py
 
 import uuid
 from typing_extensions import TypedDict

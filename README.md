@@ -8,8 +8,6 @@ With this example, you can:
 - **Leverage REST Endpoints** – Interact with the Autogen agent through streaming or stateless endpoints, providing flexible integration strategies for your own applications.  
 - **Streamline Development** – Easily experiment and debug each component, reducing complexity by splitting responsibilities across separate processes.  
 
----
-
 ## Server-Side
 
 Server has an autogen (v0.4) and llama-index agents to create short stories.
@@ -32,11 +30,16 @@ OPENAI_API_KEY=sk-<your key>
 OPENAI_MODEL_NAME=gpt-4o
 ```
 
+---
+
 Start server:
 
-```cd server\ap_server
-    python main
-```  
+```python
+cd server\ap_server
+python main
+```
+  
+---
 
 The call to `RemoteGraph()` on the client side sends a request to `/runs/stream` endpoint at `server\ap_server\routers\stateless_runs.py`
 
@@ -127,7 +130,7 @@ output:
 
 ## Testing
 
-* Run Server as `python main.py`
-* Run RemoteGraph client as `python lg.py`
-* Run stateless REST client as `python rest.py`
-* Run stateless REST client for human-in-loop `python rest_autogen_human_in_loop.py`
+- Run Server as `python main.py`
+- Run RemoteGraph client as `python lg.py`
+- Run stateless REST client as `python rest.py`
+- Run stateless REST client for human-in-loop `python rest_autogen_human_in_loop.py`

@@ -20,11 +20,13 @@ async def autogen_agent(input_query: str):
     try:
         # Send the input query to the AssistantAgent and await the response.
         assistant_agent, cancellation_token = get_assistant_agent()
-        response = await assistant_agent.on_messages([TextMessage(content=input_query, source="user")],
-                                                     cancellation_token)
+        cancellation_token.cancel()
+        # response = await assistant_agent.on_messages([TextMessage(content=input_query, source="user")],
+        #                                              cancellation_token)
     except Exception as e:
         # Raise an HTTPException with status code 500 if an error occurs.
         raise HTTPException(status_code=500, detail=f"Error in autogen_agent: {str(e)}")
 
     # Return the content of the response message.
-    return response.chat_message.content
+    # return response.chat_message.content
+    return ""

@@ -42,11 +42,12 @@ def node_autogen_request_stateless(state):
     try:
         # stateless request to autogen server
         response = requests.post(url, headers=headers, data=payload)
+        print("response:", response.json())
         if response.status_code == 200:
             #print("response", response.json())
             return {"output": response.json()["output"]}
     except Exception as e:
-        #print("error:", e)
+        print("error:", e)
         return {"output": e}
 
 

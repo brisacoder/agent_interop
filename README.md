@@ -1,6 +1,6 @@
 # Agentic Framework Interoperability Over the Network
 
-This repository demonstrates how to orchestrate interactions between **Langgraph** and **Autogen** agents **over a network**, rather than in a single codebase. By separating the server-side Autogen agent (for generating short stories) and the client-side Langgraph agent, you gain a clear, modular architecture that showcases how distributed AI agents can interoperate via REST APIs.
+This repository demonstrates how to orchestrate interactions between **Langgraph**, **Autogen** and **Llama-Index** agents **over a network**, rather than in a single codebase. By separating the server-side Autogen/Llama-Index agent (for generating short stories) and the client-side Langgraph agent, you gain a clear, modular architecture that showcases how distributed AI agents can interoperate via REST APIs.
 
 With this example, you can:
 
@@ -12,9 +12,12 @@ With this example, you can:
 
 ## Server-Side
 
-Server has an autogen agent(v0.4) to create short stories.
+Server has an autogen (v0.4) and llama-index agents to create short stories.
 
 Prereq:<br/>
+
+Export variables or create a .env file (preferred) with OpenAI or Azure OPenAI infomation. Examples
+
 export azure openai env vars for using autogen agent-
 
 ```bash
@@ -24,8 +27,16 @@ AZURE_OPENAI_DEPLOYMENT="gpt-4o"
 AZURE_API_VERSION="2024-08-01-preview"
 ```
 
+```bash
+OPENAI_API_KEY=sk-<your key>
+OPENAI_MODEL_NAME=gpt-4o
+```
+
 Start server:
-```server\ap_server\main.py```  has the entry point for AP Server.
+
+```cd server\ap_server
+    python main
+```  
 
 The call to `RemoteGraph()` on the client side sends a request to `/runs/stream` endpoint at `server\ap_server\routers\stateless_runs.py`
 
@@ -50,6 +61,7 @@ output:
 ```
 
 `/runs/stream` endpoint is used by remotegraph client
+
 ```bash
 for autogen subgraph:
 curl --location 'http://localhost:8123/runs/stream' \
@@ -105,7 +117,9 @@ output:
 
 ## Client-Side
 
-`client\lg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
+`client\lg_rg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
+
+`client\llama_rg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
 
 `client\rest.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint.
 

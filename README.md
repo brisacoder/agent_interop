@@ -122,15 +122,21 @@ output:
 
 `client\lg_rg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
 
+`client\lg_rg_human_in_loop_autogen.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server via /runs/human_in_loop endpoint and runs a human_in_loop workflow in the autogen subgraph.
+
 `client\llama_rg.py` has a client that consist of a Graph + a `RemoteGraph()` API that hits the above mentioned server.
 
 `client\rest.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint.
 
-`client\rest_autogen_human_in_loop.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint and then sends the output to a human in loop.
+`client\rest_human_in_loop_autogen.py` contains a client that makes a stateless request to the above mentioned server via /runs/human_in_loop endpoint and runs a human_in_loop workflow in the autogen subgraph.
+
+`client\rest_human_in_loop_lg.py` contains a client that makes a stateless request to the above mentioned server via /runs endpoint and then sends the output to a langgraph for human in loop.
 
 ## Testing
 
 - Run Server as `python main.py`
 - Run RemoteGraph client as `python lg.py`
+- Run RemoteGraph client for human-in-loop demo for autogen `python lg_human_in_loop_autogen.py`
 - Run stateless REST client as `python rest.py`
-- Run stateless REST client for human-in-loop `python rest_autogen_human_in_loop.py`
+- Run stateless REST client for human-in-loop demo for autogen `python rest_human_in_loop_autogen.py`
+- Run stateless REST client for human-in-loop demo for LangGraph `python rest_human_in_loop_lg.py`

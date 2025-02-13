@@ -27,4 +27,8 @@ async def autogen_agent(input_query: str):
         raise HTTPException(status_code=500, detail=f"Error in autogen_agent: {str(e)}")
 
     # Return the content of the response message.
-    return response.chat_message.content
+    common_response = {"type": response.chat_message.type, "content": response.chat_message.content, "role": response.chat_message.source, 
+                       "prompt_tokens": response.chat_message.models_usage.prompt_tokens, 
+                       "completion_tokens": response.chat_message.models_usage.completion_tokens}
+    # return response
+    return common_response

@@ -131,9 +131,11 @@ def stream_run_stateless_runs_stream_post(
                 # Create a dictionary with the response information.
                 
                 if assistant_id == "autogen":
-                    output_data = await run_autogen(human_input_content)
+                    common_response = await run_autogen(human_input_content)
+                    output_data = common_response["content"]
                 elif assistant_id == "llama_index":
-                    output_data = llama_index_agent(human_input_content)
+                    common_response = llama_index_agent(human_input_content)
+                    output_data = common_response["content"]
                 else:
                     raise ValueError("Unrecognized Agent")
 

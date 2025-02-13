@@ -31,5 +31,8 @@ def llama_index_agent(input_query: str):
         # Raise an Exception if an error occurs.
         raise Exception(f"Error in llama_index_agent: {str(e)}")
 
-    # Return the content of the response message.
-    return response.response
+    # Return data to server in a common format
+    common_response = {"type": agent.chat_history[-1].blocks[0].block_type, "content": response.response, "role": agent.chat_history[-1].role.value, 
+                       "prompt_tokens": 0, 
+                       "completion_tokens": 0}    
+    return common_response

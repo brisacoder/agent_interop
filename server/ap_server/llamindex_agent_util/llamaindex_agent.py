@@ -27,7 +27,7 @@ def llama_index_agent(input_query: str):
     """
     try:
         token_counter = TokenCountingHandler(
-            tokenizer=tiktoken.encoding_for_model("gpt-3.5-turbo").encode
+            tokenizer=tiktoken.encoding_for_model("gpt-4o").encode
         )
 
         Settings.llm = get_model_client()

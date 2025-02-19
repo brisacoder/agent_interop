@@ -41,7 +41,7 @@ async def autogen_agent_human_in_loop(input_query: str):
         stream = team.run_stream(task=input_query)
         async for message_autogen in stream:
             if isinstance(message_autogen, UserInputRequestedEvent):
-                task_id = str(uuid.uuid4())
+                task_id = str(uuid.uuid4()) # Optional: task_id 
                 paused_tasks['task_id'] = {"status": "waiting_for_input"}
                 return {
                     "task_id": task_id,
@@ -57,9 +57,6 @@ async def autogen_agent_human_in_loop(input_query: str):
 
 
 async def continue_process(user_input:str):  # Changed to dict to match client format
-
-
-    
     # Resume processing with user input
     print(f"Server: Continuing task with input: {user_input}")
     print(history)

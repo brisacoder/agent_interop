@@ -51,7 +51,7 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     },
     tags=["Stateless Runs"],
 )
-# async function because autogen_agent_util is async
+
 async def run_stateless_runs_post_human_in_loop_continue(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
     """
     Asynchronously processes a stateless run request and returns the result.

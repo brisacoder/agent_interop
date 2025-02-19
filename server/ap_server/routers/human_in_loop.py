@@ -34,7 +34,7 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     # Extract the query input from the request body.    
     query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
     print(f"Received query: {query_input}")
-    # Run the autogen agent with the extracted query input and await the output of humnan_in_loop.
+    # Run the autogen agent with the extracted query input and await the output of human_in_loop.
     output_data = await autogen_agent_human_in_loop(query_input)
     print(f"Output: {output_data}")
 

@@ -32,5 +32,5 @@ graph = builder.compile()
 # The stream_mpde below MUST match the event name that comes back from the server
 for chunk in graph.stream({
     "messages": [{"role": "user", "content": "Tell me a story about San Francisco"}]
-}, stream_mode="updates", subgraphs=True):
+}, stream_mode="messages", subgraphs=True):
     print(chunk)

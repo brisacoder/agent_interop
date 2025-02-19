@@ -154,7 +154,9 @@ def stream_run_stateless_runs_stream_post(
                 # Serialize the dictionary as JSON and yield as an SSE event.
                 
                 # The event name here, "updates" MUST match the stream_mode on the client
-                yield f"event: updates\ndata: {json.dumps(event_data)}\n\n"
+                yield f"event: messages\ndata: {json.dumps(event_data)}\n\n"
+                # This is for interrupts
+                # yield f"event: updates\ndata: {json.dumps(event_data)}\n\n"
                 # If more events are needed, add additional yields here.
 
             # Return a StreamingResponse with the SSE generator and the proper content type.

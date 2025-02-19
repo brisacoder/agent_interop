@@ -12,6 +12,9 @@ from typing import TypedDict, List
 import requests
 from langchain_core.messages import HumanMessage, BaseMessage
 from langgraph.graph import START, END, MessagesState, StateGraph
+from langgraph.types import interrupt
+from langgraph.checkpoint.memory import MemorySaver
+import uuid
 
 # url for the autogen server /runs endpoint
 url = "http://127.0.0.1:8123/runs/human_in_loop"
@@ -43,7 +46,30 @@ def node_autogen_request_stateless(state: GraphState):
 
     try:
         # stateless request to autogen server
-        response = requests.post(url, headers=headers, data=payload)
+        response = requests.post(url, headers=headers, data=payload).json()
+        if response['output']["status"] == "need_input":
+            print(f"\nServer asks: {response['output']['message']}\n")
+        
+            # Get task ID from initial response
+            #task_id = response['output']["task_id"]
+            
+            # Get user input
+            user_input = input("Your answer: ")
+            # request headers
+            headers = {
+                'accept': 'application/json',
+                'Content-Type': 'application/json'}
+            payload = json.dumps({
+                    "input": [
+                        {"user_input_from_client": user_input}]})
+            
+            # Continue the process with user input and task ID
+            final_response = requests.post(
+                url=f"http://127.0.0.1:8123/runs/continue/",
+                headers=headers,
+                data=payload).json()
+            print(f"Server response: {final_response['output']['content']}")
+            return {"messages": [final_response]}
         if response.status_code == 200:
             print("response", response.json())
             return {"messages": [response]}
@@ -56,6 +82,19 @@ builder = StateGraph(GraphState)
 builder.add_node("node_autogen_request_stateless", node_autogen_request_stateless)
 builder.add_edge(START, "node_autogen_request_stateless")
 builder.add_edge("node_autogen_request_stateless", END)
-graph = builder.compile()
-inputs = {"messages": [HumanMessage(content="write a story about a cat")]}
-result = graph.invoke(inputs)
+#graph = builder.compile()
+# A checkpointer must be enabled for interrupts to work!
+checkpointer = MemorySaver()
+graph = builder.compile(checkpointer=checkpointer)
+inputs = {"messages": [HumanMessage(content="write a story about a hare and tortoise")]}
+#result = graph.invoke(inputs)
+
+
+config = {
+    "configurable": {
+        "thread_id": uuid.uuid4(),
+    }
+}
+
+for chunk in graph.stream(inputs, config):
+    print(chunk)

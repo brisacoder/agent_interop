@@ -27,8 +27,8 @@ def get_model_client():
     """
     try:
         # Check if the required environment variables for OpenAI are set
-        openai_api_key = os.environ.get('OPENAI_API_KEY')
-        openai_model = os.environ.get('OPENAI_MODEL', 'gpt-4o')
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        openai_model = os.getenv('OPENAI_MODEL', 'gpt-4o')
 
         if openai_api_key:
             # Create an instance of OpenAI
@@ -39,9 +39,9 @@ def get_model_client():
             logging.info("Using OpenAI model client.")
         else:
             # Check if the required environment variables for Azure OpenAI are set
-            azure_endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
-            api_version = os.environ.get('AZURE_API_VERSION')
-            api_key = os.environ.get('AZURE_OPENAI_API_KEY')
+            azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
+            api_version = os.getenv('AZURE_API_VERSION')
+            api_key = os.getenv('AZURE_OPENAI_API_KEY')
 
             if not azure_endpoint or not api_version or not api_key:
                 raise EnvironmentError("Required environment variables for Azure OpenAI are not set.")

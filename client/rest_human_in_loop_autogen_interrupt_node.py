@@ -7,12 +7,13 @@
 # APPROVE
 
 import json
-from typing import TypedDict, List
+from typing import Annotated, Dict, Literal, TypedDict, List
 
 import requests
 from langchain_core.messages import HumanMessage, BaseMessage
-from langgraph.graph import START, END, MessagesState, StateGraph
-from langgraph.types import interrupt
+from langgraph.graph import START, END, StateGraph
+from langgraph.graph.message import add_messages
+from langgraph.types import interrupt, Command
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
 import uuid
@@ -22,13 +23,23 @@ url = "http://127.0.0.1:8123/runs/human_in_loop"
 url_continue = "http://127.0.0.1:8123/runs/continue/"
 
 
+def default_state() -> Dict:
+    return {
+        "messages": [],
+    }
+
+
 # Define the graph state
 class GraphState(TypedDict):
-    messages: List[BaseMessage]
+    text_to_approve: str
+    exception_text: str
+    messages: Annotated[List[BaseMessage], add_messages]
 
 
 # Graph node that makes a stateless request to the autogen server
-def node_autogen_request_stateless(state: GraphState):
+def node_autogen_request_stateless(
+    state: GraphState,
+) -> Command[Literal["human_node", "exception_node", END]]:
 
     # Read the prompt from the input state
     query = state["messages"][-1].content
@@ -52,31 +63,48 @@ def node_autogen_request_stateless(state: GraphState):
             # OPTIONAL: Get task ID from initial response
             # task_id = response['output']["task_id"]
 
-            # Get user input
-            user_input = input("Your answer: ")
-
-            # request headers
-            headers = {"accept": "application/json", "Content-Type": "application/json"}
-
-            payload = json.dumps({"input": [{"user_input_from_client": user_input}]})
-
-            # Continue the process with user input and task ID
-            final_response = requests.post(
-                url=url_continue, headers=headers, data=payload
-            ).json()
-            print(f"Server response: {final_response['output']['content']}")
-            return {"messages": [final_response]}
-        if response.status_code == 200:
-            print("response", response.json())
-            return {"messages": [response]}
+            return Command(
+                goto="human_node",  # The next node(s) to go to
+                update={
+                    "text_to_approve": f"\nServer asks: {response['output']['message']}\n"
+                },
+            )
+        else:
+            return Command(
+                goto=END,  # The next node(s) to go to
+                update={"messages": [response]},  # The update to apply to the state
+            )
     except Exception as e:
-        return {"messages": [e]}
+        return Command(
+            goto="exception_node",  # The next node(s) to go to
+            update={"exception_text": e},  # The update to apply to the state
+        )
+
+
+def exception_node(state: GraphState):
+    print(f"Exception happen while processing graph: {state["exception_text"]}")
+    return default_state()
+
+
+def human_node(state: GraphState):
+    value = interrupt(
+        # Any JSON serializable value to surface to the human.
+        # For example, a question or a piece of text or a set of keys in the state
+        {"text_to_revise": state["text_to_approve"]}
+    )
+    return {
+        # Update the state with the human's input
+        "text_to_approve": value
+    }
 
 
 # Build a sample graph
 builder = StateGraph(GraphState)
+builder.add_node("human_node", human_node)
+builder.add_node("exception_node", exception_node)
 builder.add_node("node_autogen_request_stateless", node_autogen_request_stateless)
 builder.add_edge(START, "node_autogen_request_stateless")
+builder.add_edge("exception_node", END)
 builder.add_edge("node_autogen_request_stateless", END)
 
 # A checkpointer needs be enabled for interrupts to work
@@ -90,4 +118,8 @@ config: RunnableConfig = {
     }
 }
 for chunk in graph.stream(inputs, config=config):
+    print(chunk)
+
+# Resume using Command
+for chunk in graph.stream(Command(resume="Edited text"), config=config):
     print(chunk)

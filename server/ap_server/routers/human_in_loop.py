@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Response, status
-from autogen_agent_util.human_in_loop import autogen_agent_human_in_loop
+from autogen_agent_util.human_in_loop import autogen_agent_human_in_loop, continue_process
 from models import Any, ErrorResponse, RunCreateStateless, Union
 
 router = APIRouter(tags=["Stateless Runs"])
@@ -31,7 +31,7 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     Returns:
         Union[Any, ErrorResponse]: The result of the run or an error response.
     """
-    # Extract the query input from the request body.
+    # Extract the query input from the request body.    
     query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
     print(f"Received query: {query_input}")
     # Run the autogen agent with the extracted query input and await the output of humnan_in_loop.
@@ -39,3 +39,37 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     print(f"Output: {output_data}")
 
     return {"query": query_input, "output": output_data}
+
+
+@router.post(
+    "/runs/continue",
+    response_model=Any,
+    responses={
+        "404": {"model": ErrorResponse},
+        "409": {"model": ErrorResponse},
+        "422": {"model": ErrorResponse},
+    },
+    tags=["Stateless Runs"],
+)
+
+async def run_stateless_runs_post_human_in_loop_continue(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+    """
+    Asynchronously processes a stateless run request and returns the result.
+
+    Args:
+        body (RunCreateStateless): The request body containing the run details.
+
+    Returns:
+        Union[Any, ErrorResponse]: The result of the run or an error response.
+    """
+    # Extract the query input from the request body.    
+    print(body)
+    user_input_from_client_side = body.input[0]['user_input_from_client'] 
+
+    print(f"Received user input from user behind client side: {user_input_from_client_side}")
+    # Run the autogen agent with the extracted query input and await the output of humnan_in_loop.
+    output_data = await continue_process(user_input_from_client_side)
+    print(f"Output: {output_data}")
+
+    return {"query": user_input_from_client_side, "output": output_data}
+

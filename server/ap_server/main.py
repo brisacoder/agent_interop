@@ -15,7 +15,6 @@ from routers import runs, stateless_runs, store, threads, human_in_loop
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-
 def create_app():
     app = FastAPI(title="Agentic DB API", description="API for managing Agentic DB",
                   version="0.1.0")

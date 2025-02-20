@@ -30,7 +30,9 @@ router = APIRouter(tags=["Stateless Runs"])
     tags=["Stateless Runs"],
 )
 # async function because autogen_agent_util is async
-async def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+async def run_stateless_runs_post(
+    body: RunCreateStateless,
+) -> Union[Any, ErrorResponse]:
     """
     Asynchronously processes a stateless run request and returns the result.
 
@@ -41,7 +43,9 @@ async def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorR
         Union[Any, ErrorResponse]: The result of the run or an error response.
     """
     # Extract the query input from the request body.
-    query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
+    query_input = (
+        body.input[0]["query"] if isinstance(body.input, list) else body.input["query"]
+    )
     print(f"Received query: {query_input}")
     # Run the autogen agent with the extracted query input and await the output.
     output_data = await autogen_agent(query_input)
@@ -61,7 +65,7 @@ async def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorR
     tags=["Stateless Runs"],
 )
 def stream_run_stateless_runs_stream_post(
-        body: RunCreateStateless,
+    body: RunCreateStateless,
 ) -> Union[str, ErrorResponse]:
     """
     Create Run, Stream Output
@@ -103,17 +107,23 @@ def stream_run_stateless_runs_stream_post(
             # Retrieve the 'messages' list from the 'input' dictionary.
             messages = input_field.get("messages")
             if not isinstance(messages, list) or not messages:
-                raise ValueError("The 'input.messages' field should be a non-empty list.")
+                raise ValueError(
+                    "The 'input.messages' field should be a non-empty list."
+                )
 
             # Access the first message in the list.
             first_message = messages[0]
             if not isinstance(first_message, dict):
-                raise ValueError("The first element in 'input.messages' should be a dictionary.")
+                raise ValueError(
+                    "The first element in 'input.messages' should be a dictionary."
+                )
 
             # Extract the 'content' from the first message.
             human_input_content = first_message.get("content")
             if human_input_content is None:
-                raise ValueError("Missing 'content' in the first message of 'input.messages'.")
+                raise ValueError(
+                    "Missing 'content' in the first message of 'input.messages'."
+                )
 
             # Small helper function
             async def run_autogen(human_input: str) -> str:
@@ -135,12 +145,14 @@ def stream_run_stateless_runs_stream_post(
                 The event data is serialized as JSON and prefixed with 'data:'.
                 """
                 # Create a dictionary with the response information.
-                
+
                 if assistant_id == "autogen":
                     common_response = await run_autogen(human_input_content)
                     output_data = common_response["content"]
                 elif assistant_id == "autogen_human_in_loop":
-                    common_response = await run_autogen_human_in_loop(human_input_content)
+                    common_response = await run_autogen_human_in_loop(
+                        human_input_content
+                    )
                     output_data = common_response["content"]
                 elif assistant_id == "llama_index":
                     common_response = llama_index_agent(human_input_content)
@@ -152,7 +164,7 @@ def stream_run_stateless_runs_stream_post(
                     "messages": [AIMessage(output_data).model_dump()],
                 }
                 # Serialize the dictionary as JSON and yield as an SSE event.
-                
+
                 # The event name here, "updates" MUST match the stream_mode on the client
                 yield f"event: messages\ndata: {json.dumps(event_data)}\n\n"
                 # This is for interrupts
@@ -175,7 +187,9 @@ def stream_run_stateless_runs_stream_post(
         logging.info("Run creation request validated and accepted: %s", payload)
 
         # In a real application, additional processing (like starting a background task) would occur here.
-        return Response("Run processing started successfully.", status_code=status.HTTP_200_OK)
+        return Response(
+            "Run processing started successfully.", status_code=status.HTTP_200_OK
+        )
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
@@ -187,8 +201,9 @@ def stream_run_stateless_runs_stream_post(
         logging.exception("An unexpected error occurred while processing the run.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
+            detail=exc,
         )
+
 
 @router.post(
     "/runs/stream/agent",
@@ -201,27 +216,32 @@ def stream_run_stateless_runs_stream_post(
     tags=["Stateless Runs"],
 )
 def stream_run_stateless_runs_stream_post_agent(
-        body: RunCreateStateless,
+    body: RunCreateStateless,
 ) -> Union[str, ErrorResponse]:
     """
-        Create Run, Stream Output using Agent
+    Create Run, Stream Output using Agent
 
-        This endpoint accepts a JSON payload describing a run to be executed in stream mode using an agent.
-        The payload is automatically parsed into a `RunCreateStateless` object.
+    This endpoint accepts a JSON payload describing a run to be executed in stream mode using an agent.
+    The payload is automatically parsed into a `RunCreateStateless` object.
 
-        Args:
-            body (RunCreateStateless): The request body containing the run details.
+    Args:
+        body (RunCreateStateless): The request body containing the run details.
 
-        Returns:
-            Union[str, ErrorResponse]: The streaming response or an error response.
-        """
+    Returns:
+        Union[str, ErrorResponse]: The streaming response or an error response.
+    """
     # Extract the query input from the request body.
-    query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
+    query_input = (
+        body.input[0]["query"] if isinstance(body.input, list) else body.input["query"]
+    )
     print(f"Received query: {query_input}")
     # Create a StreamingResponse with the autogen_agent_streaming generator and the proper content type.
-    stream_response = StreamingResponse(autogen_agent_streaming(query_input), media_type="text/event-stream")
+    stream_response = StreamingResponse(
+        autogen_agent_streaming(query_input), media_type="text/event-stream"
+    )
 
     return stream_response
+
 
 @router.post(
     "/runs/wait",
@@ -234,7 +254,7 @@ def stream_run_stateless_runs_stream_post_agent(
     tags=["Stateless Runs"],
 )
 def wait_run_stateless_runs_wait_post(
-        body: RunCreateStateless,
+    body: RunCreateStateless,
 ) -> Union[Any, ErrorResponse]:
     """
     Create Run, Wait for Output

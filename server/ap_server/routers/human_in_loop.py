@@ -2,9 +2,14 @@
 #   filename:  openapi.json
 
 from __future__ import annotations
-
-from fastapi import APIRouter, HTTPException, Response, status
-from autogen_agent_util.human_in_loop import autogen_agent_human_in_loop, continue_process
+import json
+import logging
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
+from autogen_agent_util.human_in_loop import (
+    autogen_agent_human_in_loop,
+    continue_process,
+)
 from models import Any, ErrorResponse, RunCreateStateless, Union
 
 router = APIRouter(tags=["Stateless Runs"])
@@ -21,7 +26,9 @@ router = APIRouter(tags=["Stateless Runs"])
     tags=["Stateless Runs"],
 )
 # async function because autogen_agent_util is async
-async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+async def run_stateless_runs_post_human_in_loop(
+    body: RunCreateStateless,
+) -> Union[Any, ErrorResponse]:
     """
     Asynchronously processes a stateless run request and returns the result.
 
@@ -31,14 +38,91 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     Returns:
         Union[Any, ErrorResponse]: The result of the run or an error response.
     """
-    # Extract the query input from the request body.    
-    query_input = body.input[0]['query'] if isinstance(body.input, list) else body.input['query']
+    # Extract the query input from the request body.
+    query_input = (
+        body.input[0]["query"] if isinstance(body.input, list) else body.input["query"]
+    )
     print(f"Received query: {query_input}")
     # Run the autogen agent with the extracted query input and await the output of human_in_loop.
     output_data = await autogen_agent_human_in_loop(query_input)
     print(f"Output: {output_data}")
 
     return {"query": query_input, "output": output_data}
+
+
+@router.post(
+    "/runs/human_in_loop_interrupt",
+    response_model=Any,
+    responses={
+        "404": {"model": ErrorResponse},
+        "409": {"model": ErrorResponse},
+        "422": {"model": ErrorResponse},
+    },
+    tags=["Stateless Runs"],
+)
+# async function because autogen_agent_util is async
+async def human_in_loop_interrupt(
+    body: RunCreateStateless,
+) -> Union[Any, ErrorResponse]:
+    """
+    Asynchronously processes a stateless run request and returns the result.
+
+    Args:
+        body (RunCreateStateless): The request body containing the run details.
+
+    Returns:
+        Union[Any, ErrorResponse]: The result of the run or an error response.
+    """
+    try:
+        payload = body.model_dump()
+        # Retrieve the 'input' field and ensure it is a dictionary.
+        input_field = payload.get("input")
+        if not isinstance(input_field, dict):
+            raise ValueError("The 'input' field should be a dictionary.")
+
+        # Retrieve the 'messages' list from the 'input' dictionary.
+        messages = input_field.get("messages")
+        if not isinstance(messages, list) or not messages:
+            raise ValueError(
+                "The 'input.messages' field should be a non-empty list."
+            )
+
+        # Access the first message in the list.
+        first_message = messages[0]
+        if not isinstance(first_message, dict):
+            raise ValueError(
+                "The first element in 'input.messages' should be a dictionary."
+            )
+
+        # Extract the 'content' from the first message.
+        human_input_content = first_message.get("content")
+        if human_input_content is None:
+            raise ValueError(
+                "Missing 'content' in the first message of 'input.messages'."
+            )
+        logging.info(f"Received human message: {human_input_content}")
+
+        async def event_generator():
+            # Run the autogen agent with the extracted query input and await the output of human_in_loop.
+            output_data = await autogen_agent_human_in_loop(human_input_content)
+            logging.info(f"Interrupt from Autogen: {output_data}")
+            interrupt_data = {"__interrupt__": "human approval", "value": output_data}
+            yield f"event: updates\ndata: {json.dumps(interrupt_data)}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    except HTTPException as http_exc:
+        # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
+        logging.error("HTTP error during run processing: %s", http_exc.detail)
+        raise http_exc
+
+    except Exception as exc:
+        # Catch unexpected exceptions, log them, and return a 500 Internal Server Error.
+        logging.exception("An unexpected error occurred while processing the run.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc,
+        )
 
 
 @router.post(
@@ -51,8 +135,9 @@ async def run_stateless_runs_post_human_in_loop(body: RunCreateStateless) -> Uni
     },
     tags=["Stateless Runs"],
 )
-
-async def run_stateless_runs_post_human_in_loop_continue(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+async def run_stateless_runs_post_human_in_loop_continue(
+    body: RunCreateStateless,
+) -> Union[Any, ErrorResponse]:
     """
     Asynchronously processes a stateless run request and returns the result.
 
@@ -62,14 +147,15 @@ async def run_stateless_runs_post_human_in_loop_continue(body: RunCreateStateles
     Returns:
         Union[Any, ErrorResponse]: The result of the run or an error response.
     """
-    # Extract the query input from the request body.    
+    # Extract the query input from the request body.
     print(body)
-    user_input_from_client_side = body.input[0]['user_input_from_client'] 
+    user_input_from_client_side = body.input[0]["user_input_from_client"]
 
-    print(f"Received user input from user behind client side: {user_input_from_client_side}")
+    print(
+        f"Received user input from user behind client side: {user_input_from_client_side}"
+    )
     # Run the autogen agent with the extracted query input and await the output of humnan_in_loop.
     output_data = await continue_process(user_input_from_client_side)
     print(f"Output: {output_data}")
 
     return {"query": user_input_from_client_side, "output": output_data}
-

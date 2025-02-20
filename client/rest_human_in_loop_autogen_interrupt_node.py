@@ -19,7 +19,7 @@ from langchain_core.runnables.config import RunnableConfig
 import uuid
 
 # url for the autogen server /runs endpoint
-url = "http://127.0.0.1:8123/runs/human_in_loop"
+url = "http://127.0.0.1:8123/runs/human_in_loop_interrupt"
 url_continue = "http://127.0.0.1:8123/runs/continue/"
 
 
@@ -50,35 +50,78 @@ def node_autogen_request_stateless(
     # payload to send to autogen server at /runs endpoint
     payload = json.dumps(
         {
-            "input": [{"query": query}],
+            "agent_id": "hitl",
+            "input": {"messages": [HumanMessage(query).model_dump()]},
+            "model": "gpt-4o"
         }
     )
 
     try:
-        # stateless request to autogen server
-        response = requests.post(url, headers=headers, data=payload).json()
-        if response["output"]["status"] == "need_input":
-            print(f"\nServer asks: {response['output']['message']}\n")
+        # POST request to the autogen server with streaming enabled.
+        response = requests.post(url, headers=headers, data=payload, stream=True)
 
-            # OPTIONAL: Get task ID from initial response
-            # task_id = response['output']["task_id"]
-
+        # Handle HTTP errors (4xx, 5xx)
+        if response.status_code != 200:
+            error_message = f"HTTP Error: {response.status_code} - {response.text}"
             return Command(
-                goto="human_node",  # The next node(s) to go to
-                update={
-                    "text_to_approve": f"\nServer asks: {response['output']['message']}\n"
-                },
+                goto="exception_node", update={"exception_text": error_message}
+            )
+
+        # Check the content type to see if it's an SSE stream.
+        content_type = response.headers.get("Content-Type", "")
+        if "text/event-stream" in content_type:
+            accumulator = []
+            # Process SSE lines until we get a complete event (blank line)
+            for line in response.iter_lines(decode_unicode=True):
+                if line:
+                    accumulator.append(line)
+                else:
+                    # End of an event
+                    event_type = None
+                    data = None
+                    for event_line in accumulator:
+                        if event_line.startswith("event:"):
+                            event_type = event_line[len("event:") :].strip()
+                        elif event_line.startswith("data:"):
+                            data = event_line[len("data:") :].strip()
+                    accumulator = []  # Reset for the next event
+
+                    # Only process events of type 'updates'
+                    if event_type == "updates" and data:
+                        event_data = json.loads(data)
+                        # Check if this is an interrupt event that requires human approval
+                        if event_data.get("__interrupt__") == "human approval":
+                            output_data = event_data.get("value")
+                            print(f"\nServer asks: {output_data}\n")
+                            return Command(
+                                goto="human_node",
+                                update={
+                                    "text_to_approve": f"\nServer asks: {output_data}\n"
+                                },
+                            )
+                        else:
+                            return Command(goto=END, update={"messages": [event_data]})
+            # In case the stream ends without producing a full event:
+            return Command(
+                goto=END,
+                update={"messages": [{"error": "No complete SSE event received."}]},
             )
         else:
-            return Command(
-                goto=END,  # The next node(s) to go to
-                update={"messages": [response]},  # The update to apply to the state
-            )
+            # Not an SSE stream; assume a standard JSON response.
+            response_data = response.json()
+            if response_data["output"]["status"] == "need_input":
+                print(f"\nServer asks: {response_data['output']['message']}\n")
+                return Command(
+                    goto="human_node",
+                    update={
+                        "text_to_approve": f"\nServer asks: {response_data['output']['message']}\n"
+                    },
+                )
+            else:
+                return Command(goto=END, update={"messages": [response_data]})
+
     except Exception as e:
-        return Command(
-            goto="exception_node",  # The next node(s) to go to
-            update={"exception_text": e},  # The update to apply to the state
-        )
+        return Command(goto="exception_node", update={"exception_text": str(e)})
 
 
 def exception_node(state: GraphState):

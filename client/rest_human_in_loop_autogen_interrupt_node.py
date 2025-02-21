@@ -11,7 +11,7 @@ import logging
 from typing import Annotated, Dict, Literal, TypedDict, List
 
 import requests
-from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.messages import HumanMessage, BaseMessage, AIMessage
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import interrupt, Command
@@ -66,8 +66,10 @@ def node_autogen_resume(
             return Command(
                 goto="exception_node", update={"exception_text": error_message}
             )
-        log.info(f"Server response: {response['output']['content']}")
-        return Command(goto=END, update={"messages": response})
+        resp_json = response.json()
+        content = resp_json["choices"][0]["message"]
+        log.info(f"Server response: {content}")
+        return Command(goto=END, update={"messages": [AIMessage(content)]})
     except Exception as e:
         return Command(goto="exception_node", update={"exception_text": str(e)})
 
@@ -130,9 +132,13 @@ def node_autogen_request_stateless(
                             log.info(f"\nServer asks: {message_to_approve}\n")
                             return Command(
                                 goto="human_node",
-                                update={"text_to_approve": message_to_approve},
+                                update={
+                                    "text_to_approve": message_to_approve,
+                                    "messages": [AIMessage(message_to_approve)],
+                                },
                             )
                         else:
+                            # TODO this is wrong of course
                             return Command(goto=END, update={"messages": [event_data]})
             # In case the stream ends without producing a full event:
             return Command(
@@ -186,12 +192,7 @@ def human_node(state: GraphState):
     return {
         # Update the state with the human's input
         "human_input": answer,
-        "messages": [
-            {
-                "role": "human",
-                "content": answer,
-            }
-        ],
+        "messages": [HumanMessage(answer)],
     }
 
 
@@ -223,8 +224,8 @@ for chunk in graph.stream(inputs, config=config):
         print(chunk)
 
 state = graph.get_state(config)
-print(state.values["text_to_approve"])
-human_input = input("Do you APPROVE this text (Yes/No)?")
+print(f"{state.values["text_to_approve"]}\n\n")
+human_input = input("Do you APPROVE this text (Yes/No)? ")
 
 # Resume using Command
 for chunk in graph.stream(Command(resume=human_input), config=config):

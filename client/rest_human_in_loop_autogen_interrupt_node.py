@@ -15,13 +15,16 @@ from langchain_core.messages import HumanMessage, BaseMessage
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import interrupt, Command
+from langgraph.errors import GraphInterrupt
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
 import uuid
 
 # Configure logging
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # url for the autogen server /runs endpoint
 url = "http://127.0.0.1:8123/runs/human_in_the_loop_interrupt"
@@ -50,15 +53,13 @@ def node_autogen_resume(
     headers = {"accept": "application/json", "Content-Type": "application/json"}
 
     payload = {
-            "agent_id": "hitl",
-            "input": {"messages": [HumanMessage(state["human_input"]).model_dump()]},
-            "model": "gpt-4o"
+        "agent_id": "hitl",
+        "input": {"messages": [HumanMessage(state["human_input"]).model_dump()]},
+        "model": "gpt-4o",
     }
     try:
         # Continue the process with user input and task ID
-        response = requests.post(
-            url=url_continue, headers=headers, json=payload
-        )
+        response = requests.post(url=url_continue, headers=headers, json=payload)
         # Handle HTTP errors (4xx, 5xx)
         if response.status_code != 200:
             error_message = f"HTTP Error: {response.status_code} - {response.text}"
@@ -84,10 +85,10 @@ def node_autogen_request_stateless(
 
     # payload to send to autogen server at /runs endpoint
     payload = {
-            "agent_id": "hitl",
-            "input": {"messages": [HumanMessage(query).model_dump()]},
-            "model": "gpt-4o"
-        }
+        "agent_id": "hitl",
+        "input": {"messages": [HumanMessage(query).model_dump()]},
+        "model": "gpt-4o",
+    }
 
     try:
         # POST request to the autogen server with streaming enabled.
@@ -124,13 +125,12 @@ def node_autogen_request_stateless(
                         event_data = json.loads(data)
                         # Check if this is an interrupt event that requires human approval
                         if event_data.get("__interrupt__") == "human approval":
-                            output_data = event_data.get("value")
-                            print(f"\nServer asks: {output_data}\n")
+                            interrupt_value = event_data.get("value")
+                            message_to_approve = interrupt_value["message"]
+                            log.info(f"\nServer asks: {message_to_approve}\n")
                             return Command(
                                 goto="human_node",
-                                update={
-                                    "text_to_approve": f"\nServer asks: {output_data}\n"
-                                },
+                                update={"text_to_approve": message_to_approve},
                             )
                         else:
                             return Command(goto=END, update={"messages": [event_data]})
@@ -168,7 +168,9 @@ def human_node(state: GraphState):
     question = "Do you APPROVE this text (Yes/No)?"
 
     while True:
-        answer = interrupt({question: state["text_to_approve"]})
+        answer = interrupt(
+            value={"question": question, "text": state["text_to_approve"]}
+        )
 
         # Validate answer, if the answer isn't valid ask for input again.
         if not isinstance(answer, str) or answer not in valid_responses:
@@ -184,10 +186,12 @@ def human_node(state: GraphState):
     return {
         # Update the state with the human's input
         "human_input": answer,
-        "messages": [{
+        "messages": [
+            {
                 "role": "human",
                 "content": answer,
-            }]
+            }
+        ],
     }
 
 
@@ -213,9 +217,15 @@ config: RunnableConfig = {
         "thread_id": uuid.uuid4(),
     }
 }
+
 for chunk in graph.stream(inputs, config=config):
-    print(chunk)
+    if "__interrupt__" not in chunk:
+        print(chunk)
+
+state = graph.get_state(config)
+print(state.values["text_to_approve"])
+human_input = input("Do you APPROVE this text (Yes/No)?")
 
 # Resume using Command
-for chunk in graph.stream(Command(resume="Edited text"), config=config):
+for chunk in graph.stream(Command(resume=human_input), config=config):
     print(chunk)

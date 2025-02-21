@@ -183,7 +183,7 @@ async def run_human_in_loop_continue(
         output_data = await continue_process(human_input_content)
         log.info(f"Resume Output: {output_data}")
 
-        return {"output": output_data}
+        return output_data
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
         logging.error("HTTP error during run processing: %s", http_exc.detail)

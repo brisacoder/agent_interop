@@ -1,3 +1,5 @@
+import logging
+from typing import Any
 from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
@@ -11,6 +13,11 @@ from autogen_agent_util.user_proxy_agent import get_user_proxy_agent
 from autogen_agentchat.messages import UserInputRequestedEvent
 from langgraph.types import interrupt
 
+
+# Configure logging
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 router = APIRouter(tags=["Stateless Runs"])
 
 
@@ -22,7 +29,7 @@ termination = TextMentionTermination("APPROVE")
 team = RoundRobinGroupChat(
     [assistant_agent, user_proxy_agent], termination_condition=termination
 )
-history = []
+history: list[Any] = []
 
 
 async def autogen_agent_human_in_loop(input_query: str):
@@ -50,12 +57,11 @@ async def autogen_agent_human_in_loop(input_query: str):
                 return {
                     "task_id": task_id,
                     "status": "need_input",
-                    "message": "Remote agent needs approval. Type APPROVE to terminate",
+                    "message": history[-1].content,
                 }
             else:
-                print(history)
+                log.info(message_autogen)
                 history.append(message_autogen)
-            # Console(message_autogen)
     except Exception as e:
         # Raise an HTTPException with status code 500 if an error occurs.
         raise HTTPException(status_code=500, detail=f"Error in autogen_agent: {str(e)}")
@@ -71,11 +77,21 @@ async def continue_process(user_input: str):  # Changed to dict to match client 
     history.append(response.chat_message.content)
     # Return the content of the response message
     common_response = {
-        "type": "AUTOGEN_APPROVE",
-        "content": history,
-        "role": response.chat_message.source,
-        "prompt_tokens": response.chat_message.models_usage.prompt_tokens,
-        "completion_tokens": response.chat_message.models_usage.completion_tokens,
+        "object": response.chat_message.type,
+        "choices": [
+            {
+                "message": {
+                    "role": response.chat_message.source,
+                    "content": response.chat_message.content,
+                }
+            }
+        ],
+        "usage": {
+            "prompt_tokens": response.chat_message.models_usage.prompt_tokens,
+            "completion_tokens": response.chat_message.models_usage.completion_tokens,
+            "total_tokens": response.chat_message.models_usage.prompt_tokens
+            + response.chat_message.models_usage.completion_tokens,
+        },
     }
 
     return common_response

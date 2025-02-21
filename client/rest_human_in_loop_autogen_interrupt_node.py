@@ -7,6 +7,7 @@
 # APPROVE
 
 import json
+import logging
 from typing import Annotated, Dict, Literal, TypedDict, List
 
 import requests
@@ -18,8 +19,12 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables.config import RunnableConfig
 import uuid
 
+# Configure logging
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 # url for the autogen server /runs endpoint
-url = "http://127.0.0.1:8123/runs/human_in_loop_interrupt"
+url = "http://127.0.0.1:8123/runs/human_in_the_loop_interrupt"
 url_continue = "http://127.0.0.1:8123/runs/continue/"
 
 
@@ -33,7 +38,37 @@ def default_state() -> Dict:
 class GraphState(TypedDict):
     text_to_approve: str
     exception_text: str
+    human_input: str
     messages: Annotated[List[BaseMessage], add_messages]
+
+
+# Graph node that makes a stateless request to the autogen server
+def node_autogen_resume(
+    state: GraphState,
+) -> Command[Literal["exception_node", END]]:
+
+    headers = {"accept": "application/json", "Content-Type": "application/json"}
+
+    payload = {
+            "agent_id": "hitl",
+            "input": {"messages": [HumanMessage(state["human_input"]).model_dump()]},
+            "model": "gpt-4o"
+    }
+    try:
+        # Continue the process with user input and task ID
+        response = requests.post(
+            url=url_continue, headers=headers, json=payload
+        )
+        # Handle HTTP errors (4xx, 5xx)
+        if response.status_code != 200:
+            error_message = f"HTTP Error: {response.status_code} - {response.text}"
+            return Command(
+                goto="exception_node", update={"exception_text": error_message}
+            )
+        log.info(f"Server response: {response['output']['content']}")
+        return Command(goto=END, update={"messages": response})
+    except Exception as e:
+        return Command(goto="exception_node", update={"exception_text": str(e)})
 
 
 # Graph node that makes a stateless request to the autogen server
@@ -48,17 +83,15 @@ def node_autogen_request_stateless(
     headers = {"accept": "application/json", "Content-Type": "application/json"}
 
     # payload to send to autogen server at /runs endpoint
-    payload = json.dumps(
-        {
+    payload = {
             "agent_id": "hitl",
             "input": {"messages": [HumanMessage(query).model_dump()]},
             "model": "gpt-4o"
         }
-    )
 
     try:
         # POST request to the autogen server with streaming enabled.
-        response = requests.post(url, headers=headers, data=payload, stream=True)
+        response = requests.post(url, headers=headers, json=payload, stream=True)
 
         # Handle HTTP errors (4xx, 5xx)
         if response.status_code != 200:
@@ -130,14 +163,31 @@ def exception_node(state: GraphState):
 
 
 def human_node(state: GraphState):
-    value = interrupt(
-        # Any JSON serializable value to surface to the human.
-        # For example, a question or a piece of text or a set of keys in the state
-        {"text_to_revise": state["text_to_approve"]}
-    )
+    """Human node with validation."""
+    valid_responses = ["Yes", "No"]
+    question = "Do you APPROVE this text (Yes/No)?"
+
+    while True:
+        answer = interrupt({question: state["text_to_approve"]})
+
+        # Validate answer, if the answer isn't valid ask for input again.
+        if not isinstance(answer, str) or answer not in valid_responses:
+            question = f"{answer} is not a valid response. {question}"
+            answer = None
+            continue
+        else:
+            # If the answer is valid, we can proceed.
+            break
+
+    log.info(f"The human in the loop input is {answer}")
+
     return {
         # Update the state with the human's input
-        "text_to_approve": value
+        "human_input": answer,
+        "messages": [{
+                "role": "human",
+                "content": answer,
+            }]
     }
 
 
@@ -146,9 +196,12 @@ builder = StateGraph(GraphState)
 builder.add_node("human_node", human_node)
 builder.add_node("exception_node", exception_node)
 builder.add_node("node_autogen_request_stateless", node_autogen_request_stateless)
+builder.add_node("node_autogen_resume", node_autogen_resume)
+
+# Edges
 builder.add_edge(START, "node_autogen_request_stateless")
 builder.add_edge("exception_node", END)
-builder.add_edge("node_autogen_request_stateless", END)
+builder.add_edge("human_node", "node_autogen_resume")
 
 # A checkpointer needs be enabled for interrupts to work
 checkpointer = MemorySaver()

@@ -49,19 +49,38 @@ async def autogen_agent_human_in_loop(input_query: str):
     """
     try:
         # Run the conversation and stream to the console.
+
+        if team._is_running:
+            await team.reset()
         stream = team.run_stream(task=input_query)
         async for message_autogen in stream:
+            history.append(message_autogen)
             if isinstance(message_autogen, UserInputRequestedEvent):
                 task_id = str(uuid.uuid4())  # Optional: task_id
                 paused_tasks["task_id"] = {"status": "waiting_for_input"}
-                return {
+                log.info(f"Interrupt message: {message_autogen}")
+                yield {
+                    "type": "__interrupt__",
                     "task_id": task_id,
                     "status": "need_input",
+                    "event": "updates",
                     "message": history[-1].content,
                 }
+            elif isinstance(message_autogen, TextMessage):
+                if message_autogen.source == "assistant":
+                    log.info(f"AI message: {message_autogen}")
+                    yield {
+                        "type": "messages",
+                        "task_id": "",
+                        "status": "",
+                        "event": "messages",
+                        "message": message_autogen.content,
+                    }
+                else:
+                    log.info(f"User message: {message_autogen}")
             else:
-                log.info(message_autogen)
-                history.append(message_autogen)
+                raise HTTPException(status_code=500, detail=f"Unknown message type: {message_autogen}")
+
     except Exception as e:
         # Raise an HTTPException with status code 500 if an error occurs.
         raise HTTPException(status_code=500, detail=f"Error in autogen_agent: {str(e)}")

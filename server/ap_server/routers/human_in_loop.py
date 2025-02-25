@@ -107,11 +107,17 @@ async def human_in_the_loop_interrupt(
         logging.info(f"Received human message: {human_input_content}")
 
         async def event_generator():
-            # Run the autogen agent with the extracted query input and await the output of human_in_loop.
-            output_data = await autogen_agent_human_in_loop(human_input_content)
-            logging.info(f"Interrupt from Autogen: {output_data}")
-            interrupt_data = {"__interrupt__": "human approval", "value": output_data}
-            yield f"event: updates\ndata: {json.dumps(interrupt_data)}\n\n"
+            # Run the autogen agent with the extracted messages and await for 
+            # stream output
+            async for event_data in autogen_agent_human_in_loop(human_input_content):
+                event = "updates"
+                logging.info(f"stream from Autogen: {event_data}")
+                if event_data["type"] == "__interrupt__":
+                    stream_data = {"__interrupt__": "human approval", "value": event_data}
+                elif event_data["type"] == "messages":
+                    stream_data = event_data
+                    event = "messages"
+                yield f"event: {event}\ndata: {json.dumps(stream_data)}\n\n"
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

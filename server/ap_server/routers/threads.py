@@ -3,7 +3,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from uuid import uuid4
+from typing import Union, Dict, Any, Optional, Annotated, TYPE_CHECKING
+from uuid import UUID, uuid4
+from pydantic import BaseModel, Field
+from enum import Enum
+from datetime import datetime
+import pytz
+from models import IfExists, Status1
 
 from models import (
     Any,
@@ -23,7 +31,7 @@ from models import (
 )
 
 router = APIRouter(tags=["Threads"])
-
+threads_db = {}
 
 @router.post(
     "/threads",
@@ -35,7 +43,37 @@ def create_thread_threads_post(body: ThreadCreate) -> Union[Thread, ErrorRespons
     """
     Create Thread
     """
-    pass
+    # Generate thread_id if not provided
+    thread_id = body.thread_id if body.thread_id else uuid4()
+    
+    # Check if thread already exists
+    if str(thread_id) in threads_db:
+        if body.if_exists == IfExists.raise_:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Thread with ID {thread_id} already exists"
+            )
+        elif body.if_exists == IfExists.do_nothing:
+            return threads_db[str(thread_id)]
+    
+    # Get current time with timezone
+    current_time = datetime.now(pytz.UTC)
+    
+    # Create new thread
+    new_thread = Thread(
+        thread_id=thread_id,
+        created_at=current_time,
+        updated_at=current_time,
+        metadata=body.metadata or {},
+        status=Status1.idle,  # Default status for new threads is 'idle'
+        values=None  # Initial values are None
+    )
+    
+    # Store thread in database
+    threads_db[str(thread_id)] = new_thread
+    
+    return new_thread
+
 
 
 @router.post(

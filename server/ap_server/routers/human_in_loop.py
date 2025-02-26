@@ -107,17 +107,27 @@ async def human_in_the_loop_interrupt(
         logging.info(f"Received human message: {human_input_content}")
 
         async def event_generator():
-            # Run the autogen agent with the extracted messages and await for 
-            # stream output
-            async for event_data in autogen_agent_human_in_loop(human_input_content):
-                event = "updates"
-                logging.info(f"stream from Autogen: {event_data}")
-                if event_data["type"] == "__interrupt__":
-                    stream_data = {"__interrupt__": "human approval", "value": event_data}
-                elif event_data["type"] == "messages":
-                    stream_data = event_data
-                    event = "messages"
-                yield f"event: {event}\ndata: {json.dumps(stream_data)}\n\n"
+            headers_sent = False
+            try:
+                # Run the autogen agent with the extracted messages and awaits for
+                # stream outputs
+                async for event_data in autogen_agent_human_in_loop(human_input_content):
+                    if not headers_sent:
+                        # Mark that headers are about to be sent
+                        headers_sent = True
+                    event_mode = event_data["mode"]
+                    logging.info(f"stream from Autogen: {event_data}")
+                    yield f"event: {event_mode}\ndata: {json.dumps(event_data)}\n\n"
+            except Exception as e:
+                logging.error(f"Error during streaming: {e}")
+                if not headers_sent:
+                    # No data was sent yet; headers haven't been sent.
+                    raise HTTPException(status_code=500, detail=f"Error before sending SSE: {str(e)}")
+                else:
+                    # Headers already sent; yield an error event.
+                    error_data = json.dumps({"error": {e}})
+                    yield f"event: error\ndata: {error_data}\n\n"
+                    return
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 

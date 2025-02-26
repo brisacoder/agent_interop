@@ -60,21 +60,22 @@ async def autogen_agent_human_in_loop(input_query: str):
                 paused_tasks["task_id"] = {"status": "waiting_for_input"}
                 log.info(f"Interrupt message: {message_autogen}")
                 yield {
+                    "node": "autogen",
                     "type": "__interrupt__",
-                    "task_id": task_id,
-                    "status": "need_input",
-                    "event": "updates",
-                    "message": history[-1].content,
+                    "thread_id": task_id,
+                    "mode": "updates",
+                    "data": {"__interrupt__": "human approval",
+                             "messages": [{"role": "assistant", "content": history[-2].content}]}
                 }
             elif isinstance(message_autogen, TextMessage):
                 if message_autogen.source == "assistant":
                     log.info(f"AI message: {message_autogen}")
                     yield {
-                        "type": "messages",
-                        "task_id": "",
-                        "status": "",
-                        "event": "messages",
-                        "message": message_autogen.content,
+                        "node": "autogen",
+                        "type": "updates",
+                        "thread_id": "",
+                        "mode": "updates",
+                        "data": {"messages": [{"role": "assistant", "content": message_autogen.content}]},
                     }
                 else:
                     log.info(f"User message: {message_autogen}")
@@ -88,8 +89,7 @@ async def autogen_agent_human_in_loop(input_query: str):
 
 async def continue_process(user_input: str):  # Changed to dict to match client format
     # Resume processing with user input
-    print(f"Server: Continuing task with input: {user_input}")
-    print(history)
+    log.info(f"Server: Continuing task with input: {user_input}")
     response = await assistant_agent.on_messages(
         [TextMessage(content=user_input, source="user")], cancellation_token
     )

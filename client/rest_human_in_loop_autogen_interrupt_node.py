@@ -42,6 +42,7 @@ class GraphState(TypedDict):
     text_to_approve: str
     exception_text: str
     human_input: str
+    thread_id: str
     messages: Annotated[List[BaseMessage], add_messages]
 
 
@@ -56,6 +57,7 @@ def node_autogen_resume(
         "agent_id": "hitl",
         "input": {"messages": [HumanMessage(state["human_input"]).model_dump()]},
         "model": "gpt-4o",
+        "thread_id": state["thread_id"]
     }
     try:
         # Continue the process with user input and task ID
@@ -78,6 +80,9 @@ def node_autogen_resume(
 def node_autogen_request_stateless(
     state: GraphState,
 ) -> Command[Literal["human_node", "exception_node", END]]:
+
+    # streamed messages received will be stored here
+    messages: List[BaseMessage] = []
 
     # Read the prompt from the input state
     query = state["messages"][-1].content
@@ -126,17 +131,21 @@ def node_autogen_request_stateless(
                     if event_type == "updates" and data:
                         event_data = json.loads(data)
                         # Check if this is an interrupt event that requires human approval
-                        if event_data.get("__interrupt__") == "human approval":
-                            interrupt_value = event_data.get("value")
-                            message_to_approve = interrupt_value["message"]
-                            log.info(f"\nServer asks: {message_to_approve}\n")
+                        if event_data.get("type") == "__interrupt__":
+                            data = event_data.get("data")
+                            message_to_approve = data["messages"][0]["content"]
+                            log.debug(f"\nServer asks: {message_to_approve}\n")
                             return Command(
                                 goto="human_node",
                                 update={
                                     "text_to_approve": message_to_approve,
-                                    "messages": [AIMessage(message_to_approve)],
+                                    "messages": messages,
+                                    "thread_id": event_data.get("thread_id")
                                 },
                             )
+                        elif event_data.get("type") == "updates":
+                            data = event_data.get("data")
+                            messages.extend(data.get("messages", []))
                         else:
                             # TODO this is wrong of course
                             return Command(goto=END, update={"messages": [event_data]})
@@ -175,7 +184,7 @@ def human_node(state: GraphState):
 
     while True:
         answer = interrupt(
-            value={"question": question, "text": state["text_to_approve"]}
+            value={"text": state["text_to_approve"], "question": question, }
         )
 
         # Validate answer, if the answer isn't valid ask for input again.
@@ -187,7 +196,7 @@ def human_node(state: GraphState):
             # If the answer is valid, we can proceed.
             break
 
-    log.info(f"The human in the loop input is {answer}")
+    log.debug(f"The human in the loop input is {answer}")
 
     return {
         # Update the state with the human's input

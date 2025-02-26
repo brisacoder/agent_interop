@@ -20,3 +20,4 @@ llama-index==0.12.19
 llama-index-llms-azure-openai==0.3.0
 llama-index-llms-openai==0.3.20
 llama-index-core==0.12.19
+llama_stack_client==0.1.4

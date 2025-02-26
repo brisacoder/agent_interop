@@ -69,9 +69,9 @@ def node_autogen_resume(
                 goto="exception_node", update={"exception_text": error_message}
             )
         resp_json = response.json()
-        content = resp_json["choices"][0]["message"]
-        log.info(f"Server response: {content}")
-        return Command(goto=END, update={"messages": [AIMessage(content)]})
+        message = resp_json["choices"][0]["message"]
+        log.debug(f"Server response: {message["content"]}")
+        return Command(goto=END, update={"messages": [AIMessage(message["content"]).model_dump()]})
     except Exception as e:
         return Command(goto="exception_node", update={"exception_text": str(e)})
 
@@ -184,7 +184,7 @@ def human_node(state: GraphState):
 
     while True:
         answer = interrupt(
-            value={"text": state["text_to_approve"], "question": question, }
+            value={"text": state["text_to_approve"], "question": question}
         )
 
         # Validate answer, if the answer isn't valid ask for input again.
@@ -201,7 +201,7 @@ def human_node(state: GraphState):
     return {
         # Update the state with the human's input
         "human_input": answer,
-        "messages": [HumanMessage(answer)],
+        "messages": [HumanMessage(answer).model_dump()],
     }
 
 
@@ -228,7 +228,7 @@ config: RunnableConfig = {
     }
 }
 
-for chunk in graph.stream(inputs, config=config):
+for chunk in graph.stream(inputs, config=config, stream_mode="updates"):
     if "__interrupt__" not in chunk:
         print(chunk)
 
@@ -237,5 +237,5 @@ print(f"{state.values["text_to_approve"]}\n\n")
 human_input = input("Do you APPROVE this text (Yes/No)? ")
 
 # Resume using Command
-for chunk in graph.stream(Command(resume=human_input), config=config):
+for chunk in graph.stream(Command(resume=human_input), config=config, stream_mode="updates"):
     print(chunk)

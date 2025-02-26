@@ -3,7 +3,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from uuid import uuid4
+from typing import Union, Dict, Any, Optional, Annotated, TYPE_CHECKING
+from uuid import UUID, uuid4
+from pydantic import BaseModel, Field
+from enum import Enum
+from datetime import datetime
+import pytz
+from models import IfExists, Status1, CheckpointConfig
+from llamastack_agent_util.llamastack_utils import load_from_pickle, save_to_pickle
 
 from models import (
     Any,
@@ -23,7 +32,7 @@ from models import (
 )
 
 router = APIRouter(tags=["Threads"])
-
+threads_db = {}
 
 @router.post(
     "/threads",
@@ -35,7 +44,56 @@ def create_thread_threads_post(body: ThreadCreate) -> Union[Thread, ErrorRespons
     """
     Create Thread
     """
-    pass
+    # Generate thread_id if not provided
+    thread_id = body.thread_id if body.thread_id else uuid4()
+    
+    # Check if thread already exists
+    if str(thread_id) in threads_db:
+        if body.if_exists == IfExists.raise_:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Thread with ID {thread_id} already exists"
+            )
+        elif body.if_exists == IfExists.do_nothing:
+            return threads_db[str(thread_id)]
+        
+    # Get current time with timezone
+    current_time = datetime.now(pytz.UTC).isoformat()
+    
+    # create new threadstate
+    thread_state = ThreadState(
+        values={"state": []},
+        next=[], 
+        checkpoint=CheckpointConfig(
+            thread_id=str(thread_id),
+        checkpoint_ns=None,
+        checkpoint_id=None,
+        checkpoint_map=None,
+    ),  
+    metadata={},  # Empty dictionary for 'metadata'
+    created_at=current_time,  # Example timestamp
+    parent_checkpoint=None  # No parent
+    ) 
+
+    # Create new thread
+    new_thread = Thread(
+        thread_id=thread_id,
+        created_at=current_time,
+        updated_at=current_time,
+        metadata=body.metadata or {},
+        status=Status1.idle,  # Default status for new threads is 'idle'
+        values={"states": [thread_state]}  
+    )
+    
+    # Store thread in database
+    threads_db[str(thread_id)] = new_thread
+    
+    # Persist using pickle or json in the absence of persistence database
+    print(threads_db)
+    save_to_pickle(threads_db,"threads_db.pkl")
+
+    return new_thread
+
 
 
 @router.post(
@@ -63,7 +121,18 @@ def get_thread_threads__thread_id__get(thread_id: UUID) -> Union[Thread, ErrorRe
     """
     Get Thread
     """
-    pass
+    thread_id_str = str(thread_id)
+    
+    # Check if the thread exists in the database
+    if thread_id_str not in threads_db:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Thread with ID {thread_id_str} not found"
+        )
+    
+    thread = threads_db[thread_id_str]
+    
+    return thread
 
 
 @router.delete(
@@ -138,8 +207,22 @@ def get_latest_thread_state_threads__thread_id__state_get(
     """
     Get Thread State
     """
-    pass
-
+        # Convert UUID to string for lookup
+    thread_id_str = str(thread_id)
+    threads_db = load_from_pickle("threads_db.pkl")
+    print(threads_db)
+    
+    # Check if the thread exists in our database
+    if thread_id_str not in threads_db:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Thread with ID {thread_id} not found"
+        )
+    else:
+        thread_state_latest: ThreadState =  threads_db[thread_id_str].values["states"][-1]
+        
+        return thread_state_latest
+    
 
 @router.post(
     "/threads/{thread_id}/state",

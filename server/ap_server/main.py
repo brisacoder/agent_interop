@@ -10,7 +10,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import runs, stateless_runs, store, threads, human_in_loop
+from routers import runs, stateless_runs, store, threads, human_in_loop, stateless_runs_llamastack
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -30,6 +30,7 @@ def create_app():
     app.include_router(store.router)
     app.include_router(threads.router)
     app.include_router(human_in_loop.router)
+    app.include_router(stateless_runs_llamastack.router)
 
     # Set all CORS enabled origins
     app.add_middleware(

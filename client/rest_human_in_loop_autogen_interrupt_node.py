@@ -158,7 +158,7 @@ def node_autogen_request_stateless(
             # Not an SSE stream; assume a standard JSON response.
             response_data = response.json()
             if response_data["output"]["status"] == "need_input":
-                print(f"\nServer asks: {response_data['output']['message']}\n")
+                log.debug(f"\nServer asks: {response_data['output']['message']}\n")
                 return Command(
                     goto="human_node",
                     update={
